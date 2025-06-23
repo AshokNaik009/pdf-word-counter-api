@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: pdf-word-counter-api
+    env: python
+    buildCommand: |
+      apt-get update && 
+      apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara libtesseract-dev poppler-utils libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1 && 
+      pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: starter # You can change this to 'standard' or 'pro' for more resources
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
