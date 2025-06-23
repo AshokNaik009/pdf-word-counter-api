@@ -1,8 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pytesseract
+from pdf2image import convert_from_bytes
 from PIL import Image
-import fitz  # PyMuPDF
 import io
 import re
 import os
@@ -16,9 +16,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="PDF Word Counter API with OCR",
-    description="Extract text from PDFs (regular and scanned) and count words using OCR",
-    version="2.0.0"
+    title="PDF Word Counter API - pdf2image + pytesseract",
+    description="Extract text from PDFs using pdf2image and pytesseract for reliable OCR",
+    version="4.0.0"
 )
 
 app.add_middleware(
@@ -37,105 +37,94 @@ class WordCountResponse(BaseModel):
     pages_processed: int
     confidence_score: float = None
     extracted_text_preview: str = None
+    processing_time: float = None
     error: str = None
 
-class PDFProcessor:
+class PDF2ImageProcessor:
     def __init__(self):
-        # Configure Tesseract for multiple languages
-        self.tesseract_config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF .,:-/()<>'
+        # Configure Tesseract
+        self.tesseract_config = '--oem 3 --psm 6'
         self.supported_languages = 'eng+ara'  # English + Arabic
         
-        # Test Tesseract installation
+        # Test if tesseract is available
         try:
             version = pytesseract.get_tesseract_version()
             logger.info(f"Tesseract version: {version}")
+            self.tesseract_available = True
         except Exception as e:
             logger.error(f"Tesseract not available: {e}")
+            self.tesseract_available = False
     
-    def extract_text_from_regular_pdf(self, pdf_bytes: bytes) -> tuple:
-        """Extract text from regular PDF using PyMuPDF"""
+    def pdf_to_images_pdf2image(self, pdf_bytes: bytes) -> List[Image.Image]:
+        """Convert PDF to images using pdf2image"""
         try:
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            text = ""
-            pages_count = doc.page_count
+            logger.info("Converting PDF to images using pdf2image...")
+            start_time = time.time()
             
-            for page_num in range(pages_count):
-                page = doc[page_num]
-                page_text = page.get_text()
-                text += page_text + "\n"
+            # Convert PDF to images
+            # Using poppler_path for Windows - adjust if needed
+            images = convert_from_bytes(
+                pdf_bytes, 
+                dpi=300,  # High DPI for better OCR
+                fmt='PNG',
+                thread_count=2  # Parallel processing
+            )
             
-            doc.close()
-            return text.strip(), pages_count
-        except Exception as e:
-            logger.error(f"Error extracting text from regular PDF: {str(e)}")
-            raise e
-    
-    def pdf_to_images(self, pdf_bytes: bytes) -> List[Image.Image]:
-        """Convert PDF pages to images for OCR"""
-        try:
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            images = []
+            conversion_time = time.time() - start_time
+            logger.info(f"PDF converted to {len(images)} images in {conversion_time:.2f} seconds")
             
-            for page_num in range(doc.page_count):
-                page = doc[page_num]
-                # High resolution for better OCR (300 DPI)
-                mat = fitz.Matrix(300/72, 300/72)
-                pix = page.get_pixmap(matrix=mat)
-                img_data = pix.tobytes("png")
-                img = Image.open(io.BytesIO(img_data))
-                
-                # Convert to RGB if necessary
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                images.append(img)
-            
-            doc.close()
             return images
+            
         except Exception as e:
-            logger.error(f"Error converting PDF to images: {str(e)}")
+            logger.error(f"Error converting PDF to images with pdf2image: {str(e)}")
             raise e
     
-    def extract_text_with_ocr(self, images: List[Image.Image]) -> tuple:
-        """Extract text from images using Tesseract OCR"""
+    def extract_text_with_tesseract(self, images: List[Image.Image]) -> tuple:
+        """Extract text from images using pytesseract"""
+        if not self.tesseract_available:
+            raise Exception("Tesseract OCR not available")
+        
         try:
             all_text = ""
             total_confidence = 0
             confidence_count = 0
             
             for i, img in enumerate(images):
-                logger.info(f"Processing page {i+1}/{len(images)} with OCR...")
+                logger.info(f"Processing page {i+1}/{len(images)} with Tesseract OCR...")
                 
-                # Optimize image for OCR
                 try:
-                    # Resize if too large (max 2000px width for performance)
-                    width, height = img.size
-                    if width > 2000:
-                        ratio = 2000 / width
-                        new_height = int(height * ratio)
-                        img = img.resize((2000, new_height), Image.Resampling.LANCZOS)
-                        logger.info(f"Resized image to {2000}x{new_height} for better performance")
-                    
-                    # Extract text with simpler config for speed
                     start_time = time.time()
+                    
+                    # Optimize image for OCR
+                    # Convert to RGB if needed
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Resize if too large (for performance)
+                    width, height = img.size
+                    if width > 2500:
+                        ratio = 2500 / width
+                        new_height = int(height * ratio)
+                        img = img.resize((2500, new_height), Image.Resampling.LANCZOS)
+                        logger.info(f"Resized image to {2500}x{new_height}")
+                    
+                    # Extract text with multilingual support
                     text = pytesseract.image_to_string(
                         img, 
                         lang=self.supported_languages,
-                        config='--oem 3 --psm 6'  # Simplified config
+                        config=self.tesseract_config
                     )
                     
-                    ocr_time = time.time() - start_time
-                    logger.info(f"Page {i+1} OCR completed in {ocr_time:.2f} seconds")
-                    
-                    # Get basic confidence (simplified)
+                    # Get confidence data
                     try:
                         data = pytesseract.image_to_data(
                             img, 
-                            lang='eng',  # Use English only for confidence to speed up
-                            config='--oem 3 --psm 6',
+                            lang=self.supported_languages,
+                            config=self.tesseract_config,
                             output_type=pytesseract.Output.DICT
                         )
                         
+                        # Calculate average confidence for this page
                         confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
                         if confidences:
                             page_confidence = sum(confidences) / len(confidences)
@@ -143,14 +132,19 @@ class PDFProcessor:
                             confidence_count += 1
                             logger.info(f"Page {i+1} confidence: {page_confidence:.1f}%")
                     except Exception as conf_error:
-                        logger.warning(f"Could not calculate confidence for page {i+1}: {conf_error}")
+                        logger.warning(f"Could not get confidence for page {i+1}: {conf_error}")
                     
-                    all_text += text + "\n"
-                    logger.info(f"Page {i+1} extracted {len(text.split())} words")
+                    processing_time = time.time() - start_time
+                    word_count = len(text.split())
+                    
+                    logger.info(f"Page {i+1} processed in {processing_time:.2f}s, extracted {word_count} words")
+                    
+                    all_text += text + "\n\n"
                     
                 except Exception as page_error:
-                    logger.warning(f"Full OCR failed for page {i+1}: {page_error}")
-                    # Fallback to English only
+                    logger.warning(f"OCR failed for page {i+1}: {page_error}")
+                    
+                    # Fallback to English-only
                     try:
                         logger.info(f"Trying English-only OCR for page {i+1}...")
                         text = pytesseract.image_to_string(
@@ -158,14 +152,15 @@ class PDFProcessor:
                             lang='eng',
                             config='--oem 3 --psm 6'
                         )
-                        all_text += text + "\n"
+                        all_text += text + "\n\n"
                         logger.info(f"Page {i+1} fallback successful")
                     except Exception as fallback_error:
                         logger.error(f"Page {i+1} OCR completely failed: {fallback_error}")
                         continue
             
             avg_confidence = total_confidence / confidence_count if confidence_count > 0 else 0
-            logger.info(f"OCR completed for all pages. Average confidence: {avg_confidence:.1f}%")
+            logger.info(f"OCR completed. Average confidence: {avg_confidence:.1f}%")
+            
             return all_text.strip(), avg_confidence
             
         except Exception as e:
@@ -173,14 +168,14 @@ class PDFProcessor:
             raise e
     
     def count_words(self, text: str) -> int:
-        """Count words in text (supports multiple languages)"""
+        """Count words in text"""
         if not text or text.strip() == "":
             return 0
         
-        # Remove extra whitespace and newlines
+        # Remove extra whitespace and clean text
         text = re.sub(r'\s+', ' ', text.strip())
         
-        # Split by whitespace and filter out empty strings and single characters
+        # Split by whitespace and filter meaningful words
         words = [word for word in text.split() if len(word.strip()) > 1]
         
         return len(words)
@@ -203,7 +198,7 @@ class PDFProcessor:
         
         return languages if languages else ["Unknown"]
     
-    def get_text_preview(self, text: str, max_length: int = 200) -> str:
+    def get_text_preview(self, text: str, max_length: int = 300) -> str:
         """Get a preview of extracted text"""
         if not text:
             return ""
@@ -216,24 +211,23 @@ class PDFProcessor:
         
         return preview[:max_length] + "..."
 
-pdf_processor = PDFProcessor()
+# Initialize processor
+pdf_processor = PDF2ImageProcessor()
 
 @app.get("/test")
 async def test_endpoint():
-    """Simple test endpoint to verify service is running"""
+    """Test endpoint"""
     return {
         "status": "API is working",
         "timestamp": time.time(),
-        "message": "Service is ready to process PDFs"
+        "tesseract_available": pdf_processor.tesseract_available,
+        "message": "PDF Word Counter with pdf2image + pytesseract"
     }
 
 @app.post("/count-words", response_model=WordCountResponse)
 async def count_pdf_words(file: UploadFile = File(...)):
     """
-    Count words in PDF file (supports both regular and scanned PDFs)
-    
-    - **file**: PDF file as byte array
-    - Returns: Word count, processing method, detected languages, and confidence score
+    Count words in PDF using pdf2image + pytesseract
     """
     
     start_time = time.time()
@@ -248,11 +242,11 @@ async def count_pdf_words(file: UploadFile = File(...)):
     # Read file content
     content = await file.read()
     
-    # Check file size (limit to 10MB for cloud processing)
-    if len(content) > 10 * 1024 * 1024:
+    # Check file size
+    if len(content) > 15 * 1024 * 1024:  # 15MB limit
         raise HTTPException(
             status_code=413,
-            detail="File too large. Maximum size is 10MB for cloud processing."
+            detail="File too large. Maximum size is 15MB."
         )
     
     if len(content) == 0:
@@ -265,105 +259,78 @@ async def count_pdf_words(file: UploadFile = File(...)):
             error="Empty file provided"
         )
     
+    if not pdf_processor.tesseract_available:
+        return WordCountResponse(
+            total_words=0,
+            text_extracted=False,
+            processing_method="tesseract_unavailable",
+            languages_detected=[],
+            pages_processed=0,
+            error="Tesseract OCR not available on this system"
+        )
+    
     try:
-        # Step 1: Try direct text extraction first
-        logger.info("Attempting direct text extraction...")
+        logger.info(f"Processing PDF: {file.filename}")
         
+        # Convert PDF to images using pdf2image
         try:
-            extracted_text, pages_count = pdf_processor.extract_text_from_regular_pdf(content)
-            word_count = pdf_processor.count_words(extracted_text)
-            
-            # If we got meaningful text, return it
-            if word_count > 5:  # Threshold for meaningful content
-                languages = pdf_processor.detect_languages(extracted_text)
-                preview = pdf_processor.get_text_preview(extracted_text)
-                
-                processing_time = time.time() - start_time
-                logger.info(f"Direct extraction completed in {processing_time:.2f} seconds")
-                
-                return WordCountResponse(
-                    total_words=word_count,
-                    text_extracted=True,
-                    processing_method="direct_extraction",
-                    languages_detected=languages,
-                    pages_processed=pages_count,
-                    extracted_text_preview=preview
-                )
-        
-        except Exception as e:
-            logger.warning(f"Direct text extraction failed: {str(e)}")
-        
-        # Check if we're running out of time (25 second limit for free tier)
-        elapsed_time = time.time() - start_time
-        if elapsed_time > 25:
-            return WordCountResponse(
-                total_words=0,
-                text_extracted=False,
-                processing_method="timeout",
-                languages_detected=[],
-                pages_processed=0,
-                error="Processing timeout. Please try with a smaller file or upgrade to a paid plan for longer processing time."
-            )
-        
-        # Step 2: Use OCR for scanned documents
-        logger.info("Direct extraction yielded little text. Attempting OCR...")
-        
-        try:
-            # Convert PDF to images
-            logger.info("Converting PDF pages to images...")
-            start_conversion = time.time()
-            images = pdf_processor.pdf_to_images(content)
-            conversion_time = time.time() - start_conversion
-            logger.info(f"PDF conversion completed in {conversion_time:.2f} seconds. {len(images)} pages found.")
+            images = pdf_processor.pdf_to_images_pdf2image(content)
             
             if not images:
                 return WordCountResponse(
                     total_words=0,
                     text_extracted=False,
-                    processing_method="ocr_failed",
+                    processing_method="conversion_failed",
                     languages_detected=[],
                     pages_processed=0,
-                    error="Could not convert PDF to images for OCR"
+                    error="Could not convert PDF to images"
                 )
             
-            # Limit pages for free tier performance
-            if len(images) > 3:
-                logger.warning(f"Limiting to first 3 pages for performance (found {len(images)} pages)")
-                images = images[:3]
+            # Limit pages for performance
+            original_page_count = len(images)
+            if len(images) > 10:
+                logger.warning(f"Limiting to first 10 pages (found {len(images)} pages)")
+                images = images[:10]
             
-            # Extract text using OCR
+            # Extract text using Tesseract OCR
             logger.info(f"Starting OCR processing for {len(images)} pages...")
-            start_ocr = time.time()
-            ocr_text, confidence = pdf_processor.extract_text_with_ocr(images)
-            ocr_time = time.time() - start_ocr
-            logger.info(f"OCR processing completed in {ocr_time:.2f} seconds")
+            extracted_text, confidence = pdf_processor.extract_text_with_tesseract(images)
             
-            word_count = pdf_processor.count_words(ocr_text)
-            languages = pdf_processor.detect_languages(ocr_text)
-            preview = pdf_processor.get_text_preview(ocr_text)
+            # Process results
+            word_count = pdf_processor.count_words(extracted_text)
+            languages = pdf_processor.detect_languages(extracted_text)
+            preview = pdf_processor.get_text_preview(extracted_text)
             
             total_time = time.time() - start_time
-            logger.info(f"Final result: {word_count} words, languages: {languages}, total time: {total_time:.2f}s")
             
-            return WordCountResponse(
+            logger.info(f"Processing completed: {word_count} words, {languages}, {total_time:.2f}s")
+            
+            result = WordCountResponse(
                 total_words=word_count,
                 text_extracted=True,
-                processing_method="ocr",
+                processing_method="pdf2image_tesseract",
                 languages_detected=languages,
                 pages_processed=len(images),
-                confidence_score=round(confidence, 2),
-                extracted_text_preview=preview
+                confidence_score=round(confidence, 2) if confidence > 0 else None,
+                extracted_text_preview=preview,
+                processing_time=round(total_time, 2)
             )
             
+            if original_page_count > len(images):
+                result.error = f"Only processed first {len(images)} of {original_page_count} pages for performance"
+            
+            return result
+            
         except Exception as e:
-            logger.error(f"OCR processing failed: {str(e)}")
+            logger.error(f"PDF processing failed: {str(e)}")
             return WordCountResponse(
                 total_words=0,
                 text_extracted=False,
                 processing_method="failed",
                 languages_detected=[],
                 pages_processed=0,
-                error=f"OCR processing failed: {str(e)}"
+                error=f"Processing failed: {str(e)}",
+                processing_time=round(time.time() - start_time, 2)
             )
     
     except Exception as e:
@@ -375,46 +342,38 @@ async def count_pdf_words(file: UploadFile = File(...)):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    try:
-        version = pytesseract.get_tesseract_version()
-        return {
-            "status": "healthy",
-            "tesseract_version": str(version),
-            "supported_languages": pdf_processor.supported_languages,
-            "capabilities": ["text_extraction", "ocr", "multilingual"],
-            "environment": "docker"
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "capabilities": ["text_extraction_only"]
-        }
+    """Health check"""
+    return {
+        "status": "healthy" if pdf_processor.tesseract_available else "limited",
+        "tesseract_available": pdf_processor.tesseract_available,
+        "tesseract_version": str(pytesseract.get_tesseract_version()) if pdf_processor.tesseract_available else "Not available",
+        "supported_languages": pdf_processor.supported_languages if pdf_processor.tesseract_available else "None",
+        "processing_method": "pdf2image + pytesseract"
+    }
 
 @app.get("/")
 async def root():
     """Root endpoint"""
     return {
-        "message": "PDF Word Counter API with OCR",
-        "version": "2.0.0",
-        "description": "Extract text from both regular and scanned PDFs using OCR",
+        "message": "PDF Word Counter API - pdf2image + pytesseract",
+        "version": "4.0.0",
+        "description": "Extract text from PDFs using pdf2image and pytesseract",
+        "approach": "pdf2image converts PDF to images, pytesseract performs OCR",
+        "advantages": [
+            "Reliable PDF to image conversion",
+            "Specialized for OCR workflows", 
+            "Better handling of complex PDFs",
+            "Optimized image preprocessing"
+        ],
         "endpoints": {
-            "POST /count-words": "Count words in PDF file (with OCR support)",
+            "POST /count-words": "Count words in PDF file",
             "GET /health": "Health check",
+            "GET /test": "Simple test",
             "GET /docs": "API documentation"
         },
-        "features": [
-            "Direct text extraction for regular PDFs",
-            "OCR for scanned documents and images",
-            "English and Arabic language support",
-            "Confidence scoring for OCR results",
-            "Text preview in response"
-        ],
-        "limits": {
-            "max_file_size": "15MB",
-            "supported_formats": ["PDF"],
-            "supported_languages": ["English", "Arabic"]
+        "requirements": {
+            "tesseract_ocr": "Required for OCR processing",
+            "poppler": "Required for pdf2image conversion"
         }
     }
 
