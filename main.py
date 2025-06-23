@@ -7,6 +7,7 @@ import io
 import re
 import os
 import logging
+import time
 from typing import List
 from pydantic import BaseModel
 
@@ -103,52 +104,68 @@ class PDFProcessor:
             confidence_count = 0
             
             for i, img in enumerate(images):
-                logger.info(f"Processing page {i+1} with OCR...")
+                logger.info(f"Processing page {i+1}/{len(images)} with OCR...")
                 
-                # Extract text with confidence data
+                # Optimize image for OCR
                 try:
-                    # First try with English and Arabic
+                    # Resize if too large (max 2000px width for performance)
+                    width, height = img.size
+                    if width > 2000:
+                        ratio = 2000 / width
+                        new_height = int(height * ratio)
+                        img = img.resize((2000, new_height), Image.Resampling.LANCZOS)
+                        logger.info(f"Resized image to {2000}x{new_height} for better performance")
+                    
+                    # Extract text with simpler config for speed
+                    start_time = time.time()
                     text = pytesseract.image_to_string(
                         img, 
                         lang=self.supported_languages,
-                        config=self.tesseract_config
+                        config='--oem 3 --psm 6'  # Simplified config
                     )
                     
-                    # Get confidence score
+                    ocr_time = time.time() - start_time
+                    logger.info(f"Page {i+1} OCR completed in {ocr_time:.2f} seconds")
+                    
+                    # Get basic confidence (simplified)
                     try:
                         data = pytesseract.image_to_data(
                             img, 
-                            lang=self.supported_languages,
-                            config=self.tesseract_config,
+                            lang='eng',  # Use English only for confidence to speed up
+                            config='--oem 3 --psm 6',
                             output_type=pytesseract.Output.DICT
                         )
                         
-                        # Calculate average confidence
                         confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
                         if confidences:
                             page_confidence = sum(confidences) / len(confidences)
                             total_confidence += page_confidence
                             confidence_count += 1
-                    except:
-                        pass
+                            logger.info(f"Page {i+1} confidence: {page_confidence:.1f}%")
+                    except Exception as conf_error:
+                        logger.warning(f"Could not calculate confidence for page {i+1}: {conf_error}")
                     
                     all_text += text + "\n"
+                    logger.info(f"Page {i+1} extracted {len(text.split())} words")
                     
                 except Exception as page_error:
-                    logger.warning(f"OCR failed for page {i+1}: {page_error}")
-                    # Try with just English if Arabic fails
+                    logger.warning(f"Full OCR failed for page {i+1}: {page_error}")
+                    # Fallback to English only
                     try:
+                        logger.info(f"Trying English-only OCR for page {i+1}...")
                         text = pytesseract.image_to_string(
                             img, 
                             lang='eng',
                             config='--oem 3 --psm 6'
                         )
                         all_text += text + "\n"
-                    except:
-                        logger.error(f"OCR completely failed for page {i+1}")
+                        logger.info(f"Page {i+1} fallback successful")
+                    except Exception as fallback_error:
+                        logger.error(f"Page {i+1} OCR completely failed: {fallback_error}")
                         continue
             
             avg_confidence = total_confidence / confidence_count if confidence_count > 0 else 0
+            logger.info(f"OCR completed for all pages. Average confidence: {avg_confidence:.1f}%")
             return all_text.strip(), avg_confidence
             
         except Exception as e:
@@ -201,6 +218,15 @@ class PDFProcessor:
 
 pdf_processor = PDFProcessor()
 
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint to verify service is running"""
+    return {
+        "status": "API is working",
+        "timestamp": time.time(),
+        "message": "Service is ready to process PDFs"
+    }
+
 @app.post("/count-words", response_model=WordCountResponse)
 async def count_pdf_words(file: UploadFile = File(...)):
     """
@@ -209,6 +235,8 @@ async def count_pdf_words(file: UploadFile = File(...)):
     - **file**: PDF file as byte array
     - Returns: Word count, processing method, detected languages, and confidence score
     """
+    
+    start_time = time.time()
     
     # Validate file type
     if not file.filename.lower().endswith('.pdf'):
@@ -220,11 +248,11 @@ async def count_pdf_words(file: UploadFile = File(...)):
     # Read file content
     content = await file.read()
     
-    # Check file size (limit to 15MB for OCR processing)
-    if len(content) > 15 * 1024 * 1024:
+    # Check file size (limit to 10MB for cloud processing)
+    if len(content) > 10 * 1024 * 1024:
         raise HTTPException(
             status_code=413,
-            detail="File too large. Maximum size is 15MB."
+            detail="File too large. Maximum size is 10MB for cloud processing."
         )
     
     if len(content) == 0:
@@ -250,6 +278,9 @@ async def count_pdf_words(file: UploadFile = File(...)):
                 languages = pdf_processor.detect_languages(extracted_text)
                 preview = pdf_processor.get_text_preview(extracted_text)
                 
+                processing_time = time.time() - start_time
+                logger.info(f"Direct extraction completed in {processing_time:.2f} seconds")
+                
                 return WordCountResponse(
                     total_words=word_count,
                     text_extracted=True,
@@ -262,12 +293,28 @@ async def count_pdf_words(file: UploadFile = File(...)):
         except Exception as e:
             logger.warning(f"Direct text extraction failed: {str(e)}")
         
+        # Check if we're running out of time (25 second limit for free tier)
+        elapsed_time = time.time() - start_time
+        if elapsed_time > 25:
+            return WordCountResponse(
+                total_words=0,
+                text_extracted=False,
+                processing_method="timeout",
+                languages_detected=[],
+                pages_processed=0,
+                error="Processing timeout. Please try with a smaller file or upgrade to a paid plan for longer processing time."
+            )
+        
         # Step 2: Use OCR for scanned documents
         logger.info("Direct extraction yielded little text. Attempting OCR...")
         
         try:
             # Convert PDF to images
+            logger.info("Converting PDF pages to images...")
+            start_conversion = time.time()
             images = pdf_processor.pdf_to_images(content)
+            conversion_time = time.time() - start_conversion
+            logger.info(f"PDF conversion completed in {conversion_time:.2f} seconds. {len(images)} pages found.")
             
             if not images:
                 return WordCountResponse(
@@ -279,11 +326,24 @@ async def count_pdf_words(file: UploadFile = File(...)):
                     error="Could not convert PDF to images for OCR"
                 )
             
+            # Limit pages for free tier performance
+            if len(images) > 3:
+                logger.warning(f"Limiting to first 3 pages for performance (found {len(images)} pages)")
+                images = images[:3]
+            
             # Extract text using OCR
+            logger.info(f"Starting OCR processing for {len(images)} pages...")
+            start_ocr = time.time()
             ocr_text, confidence = pdf_processor.extract_text_with_ocr(images)
+            ocr_time = time.time() - start_ocr
+            logger.info(f"OCR processing completed in {ocr_time:.2f} seconds")
+            
             word_count = pdf_processor.count_words(ocr_text)
             languages = pdf_processor.detect_languages(ocr_text)
             preview = pdf_processor.get_text_preview(ocr_text)
+            
+            total_time = time.time() - start_time
+            logger.info(f"Final result: {word_count} words, languages: {languages}, total time: {total_time:.2f}s")
             
             return WordCountResponse(
                 total_words=word_count,
