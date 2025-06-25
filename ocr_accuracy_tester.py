@@ -8,14 +8,15 @@ import json
 
 # Import the existing processor from main.py
 try:
-    from main import UniversalPDFProcessor
+    from main import UltraFastPDFProcessor as UniversalPDFProcessor
 except ImportError:
-    print("❌ Could not import UniversalPDFProcessor from main.py")
-    print("Make sure main.py is in the same directory and contains the UniversalPDFProcessor class.")
+    print("❌ Could not import UltraFastPDFProcessor from main.py")
+    print("Make sure main.py is in the same directory and contains the UltraFastPDFProcessor class.")
     print("Current directory:", os.path.abspath('.'))
     raise
 
-class OCRAccuracyTester:
+
+class ImprovedOCRAccuracyTester:
     def __init__(self, test_folder_path: str = "test_document_5"):
         self.test_folder_path = test_folder_path
         self.pdf_processor = UniversalPDFProcessor()
@@ -25,6 +26,7 @@ class OCRAccuracyTester:
             'successful_ocr': 0,
             'failed_ocr': 0,
             'average_accuracy': 0.0,
+            'average_raw_accuracy': 0.0,
             'total_processing_time': 0.0
         }
         
@@ -61,6 +63,18 @@ class OCRAccuracyTester:
             self.logger.error(f"Error extracting word count from {filename}: {e}")
             return 0
     
+    def get_optimal_dpi(self, page_count: int, is_scanned: bool = False) -> int:
+        """Get optimal DPI based on document characteristics"""
+        base_dpi = self.scanned_dpi if is_scanned else self.dpi
+        
+        # Reduce DPI for very large documents to preserve more content
+        if page_count > 20:
+            return max(250, base_dpi - 100)  # Reduce DPI for large docs
+        elif page_count > 10:
+            return max(300, base_dpi - 50)   # Slightly reduce for medium docs
+        else:
+            return base_dpi  # Use full DPI for small docs
+
     def extract_file_metadata(self, filename: str) -> Dict:
         """
         Extract additional metadata from filename
@@ -102,8 +116,53 @@ class OCRAccuracyTester:
         accuracy = (min(expected, actual) / max(expected, actual)) * 100
         return round(accuracy, 2)
     
+    def analyze_word_count_difference(self, text: str, expected: int, advanced_count: int, raw_count: int) -> dict:
+        """Analyze why word count differs from expected"""
+        analysis = {
+            'raw_word_count': raw_count,
+            'advanced_word_count': advanced_count,
+            'expected_count': expected,
+            'difference_from_expected': expected - advanced_count,
+            'raw_vs_advanced_diff': raw_count - advanced_count,
+            'possible_reasons': []
+        }
+        
+        # Analyze potential reasons for difference
+        if 'Test Document' in text:
+            analysis['possible_reasons'].append('Document contains header/title')
+        
+        if re.search(r'Page \d+', text):
+            analysis['possible_reasons'].append('Document contains page numbers')
+        
+        if re.search(r'\d+/\d+', text):
+            analysis['possible_reasons'].append('Document contains page references')
+        
+        # Count single letters (potential OCR artifacts)
+        words = text.split()
+        single_letters = [w for w in words if len(w) == 1 and w.isalpha() and w.lower() not in ['a', 'i']]
+        if len(single_letters) > 10:
+            analysis['possible_reasons'].append(f'Many single letter artifacts ({len(single_letters)})')
+        
+        # Check for repeated words (OCR errors)
+        word_freq = {}
+        for word in words:
+            clean_word = word.lower().strip('.,!?;:')
+            word_freq[clean_word] = word_freq.get(clean_word, 0) + 1
+        
+        highly_repeated = [word for word, count in word_freq.items() if count > 20 and len(word) > 2]
+        if highly_repeated:
+            analysis['possible_reasons'].append(f'Highly repeated words: {highly_repeated[:3]}')
+        
+        # Check for excessive punctuation
+        punct_count = len([c for c in text if c in '.,!?;:'])
+        word_count = len(words)
+        if word_count > 0 and (punct_count / word_count) > 0.3:
+            analysis['possible_reasons'].append('Excessive punctuation detected')
+        
+        return analysis
+    
     def process_single_file(self, file_path: str, filename: str) -> Dict:
-        """Process a single PDF file and return results"""
+        """Process a single PDF file with improved word counting analysis"""
         self.logger.info(f"Processing: {filename}")
         
         start_time = time.time()
@@ -119,15 +178,18 @@ class OCRAccuracyTester:
             'actual_pages_from_filename': file_metadata['actual_pages'],
             'font_size': file_metadata['font_size'],
             'ocr_word_count': 0,
+            'raw_word_count': 0,
             'actual_pages_processed': 0,
             'accuracy_percentage': 0.0,
+            'raw_accuracy_percentage': 0.0,
             'processing_time': 0.0,
             'processing_method': '',
             'languages_detected': [],
             'confidence_score': None,
             'error': None,
             'success': False,
-            'text_preview': ''
+            'text_preview': '',
+            'word_count_analysis': {}
         }
         
         try:
@@ -143,18 +205,37 @@ class OCRAccuracyTester:
                 try:
                     self.logger.info("Attempting direct text extraction...")
                     extracted_text, pages_count = self.pdf_processor.extract_text_pymupdf(pdf_content)
-                    word_count = self.pdf_processor.count_words(extracted_text)
+                    
+                    # Use improved word counting
+                    if hasattr(self.pdf_processor, 'count_words_advanced'):
+                        word_count = self.pdf_processor.count_words_advanced(extracted_text)
+                    else:
+                        word_count = self.pdf_processor.count_words(extracted_text)
+                    
+                    raw_word_count = len(extracted_text.split())
+                    
+                    # Analyze word count difference
+                    analysis = self.analyze_word_count_difference(
+                        extracted_text, result['expected_word_count'], word_count, raw_word_count
+                    )
+                    result['word_count_analysis'] = analysis
                     
                     if word_count > 5:  # Meaningful content threshold
                         result.update({
                             'ocr_word_count': word_count,
+                            'raw_word_count': raw_word_count,
                             'actual_pages_processed': pages_count,
-                            'processing_method': 'direct_text_extraction',
+                            'processing_method': 'direct_text_extraction_improved',
                             'languages_detected': self.pdf_processor.detect_languages(extracted_text),
                             'text_preview': self.pdf_processor.get_text_preview(extracted_text, 200),
                             'success': True
                         })
-                        self.logger.info(f"Direct extraction successful: {word_count} words from {pages_count} pages")
+                        self.logger.info(f"Improved extraction: {word_count} words (raw: {raw_word_count}) from {pages_count} pages")
+                        
+                        # Log analysis
+                        if analysis['possible_reasons']:
+                            self.logger.info(f"Word count issues detected: {', '.join(analysis['possible_reasons'])}")
+                            self.logger.info(f"Difference from expected: {analysis['difference_from_expected']}, Raw vs Advanced: {analysis['raw_vs_advanced_diff']}")
                     else:
                         raise Exception("Insufficient text content, trying OCR")
                         
@@ -169,23 +250,47 @@ class OCRAccuracyTester:
                     self.logger.info("Attempting OCR processing...")
                     
                     # Convert PDF to images
-                    images = self.pdf_processor.pdf_to_images(pdf_content)
+                    if hasattr(self.pdf_processor, 'pdf_to_images_fast'):
+                        images = self.pdf_processor.pdf_to_images_fast(pdf_content)
+                    else:
+                        images = self.pdf_processor.pdf_to_images(pdf_content)
                     
                     if images:
                         # Extract text using OCR
-                        extracted_text, confidence = self.pdf_processor.extract_text_ocr(images)
-                        word_count = self.pdf_processor.count_words(extracted_text)
+                        if hasattr(self.pdf_processor, 'extract_text_ocr_ultra_fast'):
+                            extracted_text, confidence = self.pdf_processor.extract_text_ocr_ultra_fast(images)
+                        else:
+                            extracted_text, confidence = self.pdf_processor.extract_text_ocr(images)
+                        
+                        # Use improved word counting
+                        if hasattr(self.pdf_processor, 'count_words_advanced'):
+                            word_count = self.pdf_processor.count_words_advanced(extracted_text)
+                        else:
+                            word_count = self.pdf_processor.count_words(extracted_text)
+                        
+                        raw_word_count = len(extracted_text.split())
+                        
+                        # Analyze word count difference
+                        analysis = self.analyze_word_count_difference(
+                            extracted_text, result['expected_word_count'], word_count, raw_word_count
+                        )
+                        result['word_count_analysis'] = analysis
                         
                         result.update({
                             'ocr_word_count': word_count,
+                            'raw_word_count': raw_word_count,
                             'actual_pages_processed': len(images),
-                            'processing_method': 'ocr_pdf2image_tesseract',
+                            'processing_method': 'ultra_fast_ocr_improved',
                             'languages_detected': self.pdf_processor.detect_languages(extracted_text),
                             'confidence_score': round(confidence, 2) if confidence > 0 else None,
                             'text_preview': self.pdf_processor.get_text_preview(extracted_text, 200),
                             'success': True
                         })
-                        self.logger.info(f"OCR successful: {word_count} words from {len(images)} pages")
+                        self.logger.info(f"Improved OCR: {word_count} words (raw: {raw_word_count}) from {len(images)} pages")
+                        
+                        # Log analysis
+                        if analysis['possible_reasons']:
+                            self.logger.info(f"Word count issues detected: {', '.join(analysis['possible_reasons'])}")
                     else:
                         raise Exception("Failed to convert PDF to images")
                         
@@ -198,6 +303,10 @@ class OCRAccuracyTester:
                 result['accuracy_percentage'] = self.calculate_accuracy(
                     result['expected_word_count'], 
                     result['ocr_word_count']
+                )
+                result['raw_accuracy_percentage'] = self.calculate_accuracy(
+                    result['expected_word_count'], 
+                    result['raw_word_count']
                 )
             
         except Exception as e:
@@ -225,7 +334,7 @@ class OCRAccuracyTester:
     def run_accuracy_test(self):
         """Run the complete accuracy test on all PDF files"""
         self.logger.info("=" * 60)
-        self.logger.info("STARTING OCR ACCURACY TEST")
+        self.logger.info("STARTING IMPROVED OCR ACCURACY TEST")
         self.logger.info("=" * 60)
         
         try:
@@ -250,8 +359,9 @@ class OCRAccuracyTester:
                 if result['success']:
                     self.summary_stats['successful_ocr'] += 1
                     self.logger.info(f"✅ Success - Expected: {result['expected_word_count']}, "
-                                   f"OCR: {result['ocr_word_count']}, "
-                                   f"Accuracy: {result['accuracy_percentage']}%, "
+                                   f"Advanced: {result['ocr_word_count']}, "
+                                   f"Raw: {result['raw_word_count']}, "
+                                   f"Accuracy: {result['accuracy_percentage']}% (Raw: {result['raw_accuracy_percentage']}%), "
                                    f"Pages: {result['actual_pages_processed']}")
                 else:
                     self.summary_stats['failed_ocr'] += 1
@@ -263,7 +373,9 @@ class OCRAccuracyTester:
             successful_results = [r for r in self.results if r['success']]
             if successful_results:
                 total_accuracy = sum([r['accuracy_percentage'] for r in successful_results])
+                total_raw_accuracy = sum([r['raw_accuracy_percentage'] for r in successful_results])
                 self.summary_stats['average_accuracy'] = round(total_accuracy / len(successful_results), 2)
+                self.summary_stats['average_raw_accuracy'] = round(total_raw_accuracy / len(successful_results), 2)
             
             # Generate reports
             self.generate_detailed_report()
@@ -271,7 +383,7 @@ class OCRAccuracyTester:
             self.generate_csv_report()
             
             self.logger.info("\n" + "=" * 60)
-            self.logger.info("OCR ACCURACY TEST COMPLETED")
+            self.logger.info("IMPROVED OCR ACCURACY TEST COMPLETED")
             self.logger.info("=" * 60)
             self.print_summary()
             
@@ -280,19 +392,20 @@ class OCRAccuracyTester:
             raise
     
     def generate_detailed_report(self):
-        """Generate detailed text report"""
+        """Generate improved detailed text report"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_file = os.path.join(self.results_dir, f"ocr_accuracy_detailed_{timestamp}.txt")
+        report_file = os.path.join(self.results_dir, f"ocr_accuracy_detailed_improved_{timestamp}.txt")
         
         with open(report_file, 'w', encoding='utf-8') as f:
-            f.write("OCR ACCURACY TEST - DETAILED REPORT\n")
+            f.write("OCR ACCURACY TEST - DETAILED REPORT (IMPROVED WORD COUNTING)\n")
             f.write("=" * 80 + "\n")
             f.write(f"Test Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Test Folder: {self.test_folder_path}\n")
             f.write(f"Total Files: {self.summary_stats['total_files']}\n")
             f.write(f"Successful OCR: {self.summary_stats['successful_ocr']}\n")
             f.write(f"Failed OCR: {self.summary_stats['failed_ocr']}\n")
-            f.write(f"Average Accuracy: {self.summary_stats['average_accuracy']}%\n")
+            f.write(f"Average Accuracy (Advanced): {self.summary_stats['average_accuracy']}%\n")
+            f.write(f"Average Accuracy (Raw): {self.summary_stats['average_raw_accuracy']}%\n")
             f.write(f"Total Processing Time: {self.summary_stats['total_processing_time']}s\n")
             f.write("\n" + "=" * 80 + "\n\n")
             
@@ -300,8 +413,10 @@ class OCRAccuracyTester:
                 f.write(f"FILE #{i}: {result['filename']}\n")
                 f.write("-" * 60 + "\n")
                 f.write(f"Expected Word Count: {result['expected_word_count']}\n")
-                f.write(f"OCR Word Count: {result['ocr_word_count']}\n")
-                f.write(f"Accuracy: {result['accuracy_percentage']}%\n")
+                f.write(f"OCR Word Count (Advanced): {result['ocr_word_count']}\n")
+                f.write(f"Raw Word Count: {result.get('raw_word_count', 'N/A')}\n")
+                f.write(f"Accuracy (Advanced): {result['accuracy_percentage']}%\n")
+                f.write(f"Accuracy (Raw): {result.get('raw_accuracy_percentage', 'N/A')}%\n")
                 f.write(f"Expected Pages (from filename): {result['expected_pages']}\n")
                 f.write(f"Actual Pages (from filename): {result['actual_pages_from_filename']}\n")
                 f.write(f"Pages Processed: {result['actual_pages_processed']}\n")
@@ -312,6 +427,14 @@ class OCRAccuracyTester:
                 f.write(f"Confidence Score: {result['confidence_score']}\n")
                 f.write(f"Success: {'✅' if result['success'] else '❌'}\n")
                 
+                # Add word count analysis
+                if result.get('word_count_analysis'):
+                    analysis = result['word_count_analysis']
+                    f.write(f"Word Count Difference from Expected: {analysis['difference_from_expected']}\n")
+                    f.write(f"Raw vs Advanced Difference: {analysis['raw_vs_advanced_diff']}\n")
+                    if analysis['possible_reasons']:
+                        f.write(f"Possible Issues: {', '.join(analysis['possible_reasons'])}\n")
+                
                 if result['error']:
                     f.write(f"Error: {result['error']}\n")
                 
@@ -320,18 +443,25 @@ class OCRAccuracyTester:
                 
                 f.write("\n" + "-" * 60 + "\n\n")
         
-        self.logger.info(f"Detailed report saved: {report_file}")
+        self.logger.info(f"Improved detailed report saved: {report_file}")
         return report_file
     
     def generate_summary_report(self):
         """Generate summary JSON report"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        summary_file = os.path.join(self.results_dir, f"ocr_accuracy_summary_{timestamp}.json")
+        summary_file = os.path.join(self.results_dir, f"ocr_accuracy_summary_improved_{timestamp}.json")
         
         summary_data = {
             'test_info': {
                 'timestamp': datetime.now().isoformat(),
                 'test_folder': self.test_folder_path,
+                'improvements': [
+                    'Advanced word counting',
+                    'Header/footer removal',
+                    'Page number filtering',
+                    'OCR artifact detection',
+                    'Detailed difference analysis'
+                ],
                 'processor_capabilities': {
                     'tesseract_available': self.pdf_processor.tesseract_available,
                     'pdf2image_available': self.pdf_processor.pdf2image_available,
@@ -345,26 +475,30 @@ class OCRAccuracyTester:
         with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(summary_data, f, indent=2, ensure_ascii=False)
         
-        self.logger.info(f"Summary JSON saved: {summary_file}")
+        self.logger.info(f"Improved summary JSON saved: {summary_file}")
         return summary_file
     
     def generate_csv_report(self):
         """Generate CSV report for easy analysis"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        csv_file = os.path.join(self.results_dir, f"ocr_accuracy_results_{timestamp}.csv")
+        csv_file = os.path.join(self.results_dir, f"ocr_accuracy_results_improved_{timestamp}.csv")
         
         with open(csv_file, 'w', encoding='utf-8') as f:
             # Write header
-            f.write("Filename,Expected_Words,OCR_Words,Accuracy_%,Expected_Pages,Actual_Pages_Filename,")
-            f.write("Pages_Processed,Font_Size,Processing_Method,Processing_Time_s,")
-            f.write("Languages,Confidence,Success,Error\n")
+            f.write("Filename,Expected_Words,OCR_Words_Advanced,Raw_Words,Accuracy_Advanced_%,Accuracy_Raw_%,")
+            f.write("Expected_Pages,Actual_Pages_Filename,Pages_Processed,Font_Size,Processing_Method,Processing_Time_s,")
+            f.write("Languages,Confidence,Success,Word_Diff_Expected,Raw_vs_Advanced_Diff,Issues_Detected,Error\n")
             
             # Write data
             for result in self.results:
+                analysis = result.get('word_count_analysis', {})
+                
                 f.write(f'"{result["filename"]}",')
                 f.write(f'{result["expected_word_count"]},')
                 f.write(f'{result["ocr_word_count"]},')
+                f.write(f'{result.get("raw_word_count", "")},')
                 f.write(f'{result["accuracy_percentage"]},')
+                f.write(f'{result.get("raw_accuracy_percentage", "")},')
                 f.write(f'{result["expected_pages"] or ""},')
                 f.write(f'{result["actual_pages_from_filename"] or ""},')
                 f.write(f'{result["actual_pages_processed"]},')
@@ -374,40 +508,44 @@ class OCRAccuracyTester:
                 f.write(f'"{"; ".join(result["languages_detected"])}",')
                 f.write(f'{result["confidence_score"] or ""},')
                 f.write(f'{"Yes" if result["success"] else "No"},')
+                f.write(f'{analysis.get("difference_from_expected", "")},')
+                f.write(f'{analysis.get("raw_vs_advanced_diff", "")},')
+                f.write(f'"{"; ".join(analysis.get("possible_reasons", []))}",')
                 f.write(f'"{result["error"] or ""}"\n')
         
-        self.logger.info(f"CSV report saved: {csv_file}")
+        self.logger.info(f"Improved CSV report saved: {csv_file}")
         return csv_file
     
     def print_summary(self):
         """Print summary to console"""
         print("\n" + "=" * 80)
-        print("OCR ACCURACY TEST SUMMARY")
+        print("IMPROVED OCR ACCURACY TEST SUMMARY")
         print("=" * 80)
         print(f"Total Files Processed: {self.summary_stats['total_files']}")
         print(f"Successful OCR: {self.summary_stats['successful_ocr']}")
         print(f"Failed OCR: {self.summary_stats['failed_ocr']}")
         print(f"Success Rate: {(self.summary_stats['successful_ocr']/self.summary_stats['total_files']*100):.1f}%")
-        print(f"Average Accuracy: {self.summary_stats['average_accuracy']}%")
+        print(f"Average Accuracy (Advanced): {self.summary_stats['average_accuracy']}%")
+        print(f"Average Accuracy (Raw): {self.summary_stats['average_raw_accuracy']}%")
         print(f"Total Processing Time: {self.summary_stats['total_processing_time']}s")
         print(f"Average Time per File: {self.summary_stats['total_processing_time']/self.summary_stats['total_files']:.2f}s")
         
-        print("\nAccuracy Breakdown:")
-        accuracy_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '60-69%': 0, 'Below 60%': 0}
+        print("\nAccuracy Breakdown (Advanced Counting):")
+        accuracy_ranges = {'95-100%': 0, '90-94%': 0, '80-89%': 0, '70-79%': 0, 'Below 70%': 0}
         
         for result in self.results:
             if result['success']:
                 acc = result['accuracy_percentage']
-                if acc >= 90:
-                    accuracy_ranges['90-100%'] += 1
+                if acc >= 95:
+                    accuracy_ranges['95-100%'] += 1
+                elif acc >= 90:
+                    accuracy_ranges['90-94%'] += 1
                 elif acc >= 80:
                     accuracy_ranges['80-89%'] += 1
                 elif acc >= 70:
                     accuracy_ranges['70-79%'] += 1
-                elif acc >= 60:
-                    accuracy_ranges['60-69%'] += 1
                 else:
-                    accuracy_ranges['Below 60%'] += 1
+                    accuracy_ranges['Below 70%'] += 1
         
         for range_name, count in accuracy_ranges.items():
             print(f"  {range_name}: {count} files")
@@ -417,9 +555,9 @@ class OCRAccuracyTester:
 
 
 def main():
-    """Main function to run the OCR accuracy test"""
-    # Initialize the tester
-    tester = OCRAccuracyTester("test_document_5")
+    """Main function to run the improved OCR accuracy test"""
+    # Initialize the improved tester
+    tester = ImprovedOCRAccuracyTester("test_document_5")
     
     # Run the test
     try:

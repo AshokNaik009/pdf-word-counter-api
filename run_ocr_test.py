@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OCR Accuracy Test Runner
+OCR Accuracy Test Runner (Updated for Improved Tester)
 Run this script to test OCR accuracy on your test documents
 """
 
@@ -10,11 +10,11 @@ import os
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import the tester (save the previous script as 'ocr_accuracy_tester.py')
-from ocr_accuracy_tester import OCRAccuracyTester
+# Import the improved tester
+from ocr_accuracy_tester import ImprovedOCRAccuracyTester
 
 def main():
-    print("🔍 OCR Accuracy Test Runner")
+    print("🔍 OCR Accuracy Test Runner (IMPROVED)")
     print("=" * 50)
     
     # Check if test folder exists
@@ -38,8 +38,14 @@ def main():
         print(f"  {i:2d}. {filename}")
     
     # Ask for confirmation
-    print(f"\n🚀 Ready to test OCR accuracy on {len(pdf_files)} files.")
-    response = input("Continue? (y/N): ").strip().lower()
+    print(f"\n🚀 Ready to test OCR accuracy on {len(pdf_files)} files with IMPROVED word counting.")
+    print("✨ New features:")
+    print("   • Advanced word counting (removes headers/page numbers)")
+    print("   • Raw vs Advanced count comparison")
+    print("   • Detailed accuracy analysis")
+    print("   • Issue detection and reporting")
+    
+    response = input("\nContinue? (y/N): ").strip().lower()
     
     if response not in ['y', 'yes']:
         print("Test cancelled.")
@@ -47,11 +53,15 @@ def main():
     
     # Run the test
     try:
-        tester = OCRAccuracyTester(test_folder)
+        tester = ImprovedOCRAccuracyTester(test_folder)
         tester.run_accuracy_test()
         
         print("\n✅ Test completed successfully!")
         print(f"📊 Check the 'ocr_test_results' folder for detailed reports.")
+        print("📈 New reports include:")
+        print("   • *_improved_*.txt - Detailed report with word count analysis")
+        print("   • *_improved_*.csv - Enhanced CSV with issue detection")
+        print("   • *_improved_*.json - Complete JSON with all improvements")
         
     except Exception as e:
         print(f"\n❌ Test failed with error: {e}")
