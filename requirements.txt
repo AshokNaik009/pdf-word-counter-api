@@ -1,7 +1,23 @@
+# Enhanced PDF OCR API Requirements
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 python-multipart==0.0.6
-pytesseract==0.3.13
-pdf2image==1.17.0
-Pillow==10.1.0
 pydantic==2.5.0
+
+# OCR and PDF processing
+pytesseract==0.3.10
+pdf2image==1.16.3
+PyMuPDF==1.23.18
+Pillow==10.1.0
+
+# Image processing (NEW - for enhanced OCR)
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# Optional but recommended
+python-dotenv==1.0.0
+requests==2.31.0
+
+# For development/testing
+pytest==7.4.3
+pytest-asyncio==0.21.1

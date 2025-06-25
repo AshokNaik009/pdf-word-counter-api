@@ -1,0 +1,398 @@
+{
+  "test_info": {
+    "timestamp": "2025-06-25T15:05:02.297120",
+    "test_folder": "test_document_5",
+    "processor_capabilities": {
+      "tesseract_available": true,
+      "pdf2image_available": true,
+      "pymupdf_available": true
+    }
+  },
+  "summary_statistics": {
+    "total_files": 18,
+    "successful_ocr": 18,
+    "failed_ocr": 0,
+    "average_accuracy": 96.88,
+    "total_processing_time": 0.1
+  },
+  "detailed_results": [
+    {
+      "filename": "test_document_100words_expected0.5p_actual1p_f13.pdf",
+      "file_path": "test_document_5\\test_document_100words_expected0.5p_actual1p_f13.pdf",
+      "expected_word_count": 100,
+      "expected_pages": 0.5,
+      "actual_pages_from_filename": 1.0,
+      "font_size": 13,
+      "ocr_word_count": 110,
+      "actual_pages_processed": 1,
+      "accuracy_percentage": 90.91,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 100 Words (Font: 13pt) His him i me in make work some our there his two. Like go has then just very make can new too our she! Go on before were think her were work is. Know know new tw..."
+    },
+    {
+      "filename": "test_document_1122words_expected5.6p_actual7p_f16.pdf",
+      "file_path": "test_document_5\\test_document_1122words_expected5.6p_actual7p_f16.pdf",
+      "expected_word_count": 1122,
+      "expected_pages": 5.6,
+      "actual_pages_from_filename": 7.0,
+      "font_size": 16,
+      "ocr_word_count": 1144,
+      "actual_pages_processed": 7,
+      "accuracy_percentage": 98.08,
+      "processing_time": 0.01,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 1122 Words (Font: 16pt) These she still on still out will two when can our it write. Still up more one as there first made have which just on its there only about from? Used still shou..."
+    },
+    {
+      "filename": "test_document_1189words_expected5.9p_actual5p_f13.pdf",
+      "file_path": "test_document_5\\test_document_1189words_expected5.9p_actual5p_f13.pdf",
+      "expected_word_count": 1189,
+      "expected_pages": 5.9,
+      "actual_pages_from_filename": 5.0,
+      "font_size": 13,
+      "ocr_word_count": 1207,
+      "actual_pages_processed": 5,
+      "accuracy_percentage": 98.51,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 1189 Words (Font: 13pt) Into has will her time have life can about her through his life to have. The here after say its how how on good will work man his her two not what some. One one..."
+    },
+    {
+      "filename": "test_document_1200words_expected6.0p_actual7p_f16.pdf",
+      "file_path": "test_document_5\\test_document_1200words_expected6.0p_actual7p_f16.pdf",
+      "expected_word_count": 1200,
+      "expected_pages": 6.0,
+      "actual_pages_from_filename": 7.0,
+      "font_size": 16,
+      "ocr_word_count": 1222,
+      "actual_pages_processed": 7,
+      "accuracy_percentage": 98.2,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 1200 Words (Font: 16pt) Which two her on here should all but. Also use she what then here up said? After think me also what our use him how their work only can so over all her? A our a..."
+    },
+    {
+      "filename": "test_document_1500words_expected7.5p_actual5p_f12.pdf",
+      "file_path": "test_document_5\\test_document_1500words_expected7.5p_actual5p_f12.pdf",
+      "expected_word_count": 1500,
+      "expected_pages": 7.5,
+      "actual_pages_from_filename": 5.0,
+      "font_size": 12,
+      "ocr_word_count": 1518,
+      "actual_pages_processed": 5,
+      "accuracy_percentage": 98.81,
+      "processing_time": 0.02,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 1500 Words (Font: 12pt) About how which up many she if here be also would which more it in just other some which made. When get some still life still are if its first over each any fir..."
+    },
+    {
+      "filename": "test_document_1668words_expected8.3p_actual9p_f14.pdf",
+      "file_path": "test_document_5\\test_document_1668words_expected8.3p_actual9p_f14.pdf",
+      "expected_word_count": 1668,
+      "expected_pages": 8.3,
+      "actual_pages_from_filename": 9.0,
+      "font_size": 14,
+      "ocr_word_count": 1694,
+      "actual_pages_processed": 9,
+      "accuracy_percentage": 98.47,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 1668 Words (Font: 14pt) Time life what can into word is of after a then say would they get only? What write your day know what his know when to also our more. Get think can through get..."
+    },
+    {
+      "filename": "test_document_2000words_expected10.0p_actual5p_f12.pdf",
+      "file_path": "test_document_5\\test_document_2000words_expected10.0p_actual5p_f12.pdf",
+      "expected_word_count": 2000,
+      "expected_pages": 10.0,
+      "actual_pages_from_filename": 5.0,
+      "font_size": 12,
+      "ocr_word_count": 2018,
+      "actual_pages_processed": 5,
+      "accuracy_percentage": 99.11,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 2000 Words (Font: 12pt) Said make when their from word can time their! Two like had life he new one all think on on will too word they these of was know. In he write good each just mor..."
+    },
+    {
+      "filename": "test_document_200words_expected1.0p_actual1p_f16.pdf",
+      "file_path": "test_document_5\\test_document_200words_expected1.0p_actual1p_f16.pdf",
+      "expected_word_count": 200,
+      "expected_pages": 1.0,
+      "actual_pages_from_filename": 1.0,
+      "font_size": 16,
+      "ocr_word_count": 210,
+      "actual_pages_processed": 1,
+      "accuracy_percentage": 95.24,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 200 Words (Font: 16pt) Out were which which out what too still these before had still think still these? There good any it more any she just each he when being one say. From new and hi..."
+    },
+    {
+      "filename": "test_document_2500words_expected12.5p_actual11p_f13.pdf",
+      "file_path": "test_document_5\\test_document_2500words_expected12.5p_actual11p_f13.pdf",
+      "expected_word_count": 2500,
+      "expected_pages": 12.5,
+      "actual_pages_from_filename": 11.0,
+      "font_size": 13,
+      "ocr_word_count": 2530,
+      "actual_pages_processed": 11,
+      "accuracy_percentage": 98.81,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 2500 Words (Font: 13pt) All like will some do has have as can will not made if any our first into out. Them were be get for at but now into can would that think i more at by. Our each ..."
+    },
+    {
+      "filename": "test_document_3000words_expected15.0p_actual15p_f13.pdf",
+      "file_path": "test_document_5\\test_document_3000words_expected15.0p_actual15p_f13.pdf",
+      "expected_word_count": 3000,
+      "expected_pages": 15.0,
+      "actual_pages_from_filename": 15.0,
+      "font_size": 13,
+      "ocr_word_count": 3038,
+      "actual_pages_processed": 15,
+      "accuracy_percentage": 98.75,
+      "processing_time": 0.01,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 3000 Words (Font: 13pt) There by or its our when one his a some good. Or new said say then good then as very before be that a what her! Their use if about a will go life him through. H..."
+    },
+    {
+      "filename": "test_document_350words_expected1.8p_actual1p_f12.pdf",
+      "file_path": "test_document_5\\test_document_350words_expected1.8p_actual1p_f12.pdf",
+      "expected_word_count": 350,
+      "expected_pages": 1.8,
+      "actual_pages_from_filename": 1.0,
+      "font_size": 12,
+      "ocr_word_count": 360,
+      "actual_pages_processed": 1,
+      "accuracy_percentage": 97.22,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 350 Words (Font: 12pt) Many to we like two what each get may how man said has its after go were from its any! Each you is his write can used other from also the their what him will the..."
+    },
+    {
+      "filename": "test_document_4000words_expected20.0p_actual19p_f13.pdf",
+      "file_path": "test_document_5\\test_document_4000words_expected20.0p_actual19p_f13.pdf",
+      "expected_word_count": 4000,
+      "expected_pages": 20.0,
+      "actual_pages_from_filename": 19.0,
+      "font_size": 13,
+      "ocr_word_count": 4046,
+      "actual_pages_processed": 19,
+      "accuracy_percentage": 98.86,
+      "processing_time": 0.02,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 4000 Words (Font: 13pt) His which was up made do if think. Which him good the also before may get our say his. Say but about from to his also make her they one work their use she. Me h..."
+    },
+    {
+      "filename": "test_document_475words_expected2.4p_actual3p_f16.pdf",
+      "file_path": "test_document_5\\test_document_475words_expected2.4p_actual3p_f16.pdf",
+      "expected_word_count": 475,
+      "expected_pages": 2.4,
+      "actual_pages_from_filename": 3.0,
+      "font_size": 16,
+      "ocr_word_count": 489,
+      "actual_pages_processed": 3,
+      "accuracy_percentage": 97.14,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 475 Words (Font: 16pt) Out at i other then may too out is. This for had me would when also still our when or as some write day their? Man will is our all is work that here over so just..."
+    },
+    {
+      "filename": "test_document_5000words_expected25.0p_actual23p_f13.pdf",
+      "file_path": "test_document_5\\test_document_5000words_expected25.0p_actual23p_f13.pdf",
+      "expected_word_count": 5000,
+      "expected_pages": 25.0,
+      "actual_pages_from_filename": 23.0,
+      "font_size": 13,
+      "ocr_word_count": 5054,
+      "actual_pages_processed": 23,
+      "accuracy_percentage": 98.93,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 5000 Words (Font: 13pt) Over her get over very being made at was get over they these day used as of. Still man for when made may first too make from their as what on should only do by?..."
+    },
+    {
+      "filename": "test_document_500words_expected2.5p_actual3p_f16.pdf",
+      "file_path": "test_document_5\\test_document_500words_expected2.5p_actual3p_f16.pdf",
+      "expected_word_count": 500,
+      "expected_pages": 2.5,
+      "actual_pages_from_filename": 3.0,
+      "font_size": 16,
+      "ocr_word_count": 514,
+      "actual_pages_processed": 3,
+      "accuracy_percentage": 97.28,
+      "processing_time": 0.02,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 500 Words (Font: 16pt) For still there like which one how your life the so after him used if like? She when still they are first he you. What her if these think know two some man each...."
+    },
+    {
+      "filename": "test_document_50words_expected0.2p_actual1p_f16.pdf",
+      "file_path": "test_document_5\\test_document_50words_expected0.2p_actual1p_f16.pdf",
+      "expected_word_count": 50,
+      "expected_pages": 0.2,
+      "actual_pages_from_filename": 1.0,
+      "font_size": 16,
+      "ocr_word_count": 60,
+      "actual_pages_processed": 1,
+      "accuracy_percentage": 83.33,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 50 Words (Font: 16pt) Him they would be had after or their there are me when how say only your get it. How many our do do too too her? Used are should if first each your all me they sa..."
+    },
+    {
+      "filename": "test_document_649words_expected3.2p_actual3p_f11.pdf",
+      "file_path": "test_document_5\\test_document_649words_expected3.2p_actual3p_f11.pdf",
+      "expected_word_count": 649,
+      "expected_pages": 3.2,
+      "actual_pages_from_filename": 3.0,
+      "font_size": 11,
+      "ocr_word_count": 663,
+      "actual_pages_processed": 3,
+      "accuracy_percentage": 97.89,
+      "processing_time": 0.01,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 649 Words (Font: 11pt) If what used her may too we her your we also the before for write? Day and each used of you any which is has were still used any were say have has them a! You ou..."
+    },
+    {
+      "filename": "test_document_800words_expected4.0p_actual3p_f12.pdf",
+      "file_path": "test_document_5\\test_document_800words_expected4.0p_actual3p_f12.pdf",
+      "expected_word_count": 800,
+      "expected_pages": 4.0,
+      "actual_pages_from_filename": 3.0,
+      "font_size": 12,
+      "ocr_word_count": 814,
+      "actual_pages_processed": 3,
+      "accuracy_percentage": 98.28,
+      "processing_time": 0.0,
+      "processing_method": "direct_text_extraction",
+      "languages_detected": [
+        "English",
+        "Numbers"
+      ],
+      "confidence_score": null,
+      "error": null,
+      "success": true,
+      "text_preview": "Test Document - 800 Words (Font: 12pt) Her other from life what our here some which your all in time they their! Life for through it they only will can only not would it how we him i she. Make go of o..."
+    }
+  ]
+}

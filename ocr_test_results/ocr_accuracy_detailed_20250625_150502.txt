@@ -1,0 +1,336 @@
+OCR ACCURACY TEST - DETAILED REPORT
+================================================================================
+Test Date: 2025-06-25 15:05:02
+Test Folder: test_document_5
+Total Files: 18
+Successful OCR: 18
+Failed OCR: 0
+Average Accuracy: 96.88%
+Total Processing Time: 0.1s
+
+================================================================================
+
+FILE #1: test_document_100words_expected0.5p_actual1p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 100
+OCR Word Count: 110
+Accuracy: 90.91%
+Expected Pages (from filename): 0.5
+Actual Pages (from filename): 1.0
+Pages Processed: 1
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 100 Words (Font: 13pt) His him i me in make work some our there his two. Like go has then just very make can new too our she! Go on be...
+
+------------------------------------------------------------
+
+FILE #2: test_document_1122words_expected5.6p_actual7p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 1122
+OCR Word Count: 1144
+Accuracy: 98.08%
+Expected Pages (from filename): 5.6
+Actual Pages (from filename): 7.0
+Pages Processed: 7
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.01s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 1122 Words (Font: 16pt) These she still on still out will two when can our it write. Still up more one as there first made have which ...
+
+------------------------------------------------------------
+
+FILE #3: test_document_1189words_expected5.9p_actual5p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 1189
+OCR Word Count: 1207
+Accuracy: 98.51%
+Expected Pages (from filename): 5.9
+Actual Pages (from filename): 5.0
+Pages Processed: 5
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 1189 Words (Font: 13pt) Into has will her time have life can about her through his life to have. The here after say its how how on goo...
+
+------------------------------------------------------------
+
+FILE #4: test_document_1200words_expected6.0p_actual7p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 1200
+OCR Word Count: 1222
+Accuracy: 98.2%
+Expected Pages (from filename): 6.0
+Actual Pages (from filename): 7.0
+Pages Processed: 7
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 1200 Words (Font: 16pt) Which two her on here should all but. Also use she what then here up said? After think me also what our use hi...
+
+------------------------------------------------------------
+
+FILE #5: test_document_1500words_expected7.5p_actual5p_f12.pdf
+------------------------------------------------------------
+Expected Word Count: 1500
+OCR Word Count: 1518
+Accuracy: 98.81%
+Expected Pages (from filename): 7.5
+Actual Pages (from filename): 5.0
+Pages Processed: 5
+Font Size (from filename): 12
+Processing Method: direct_text_extraction
+Processing Time: 0.02s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 1500 Words (Font: 12pt) About how which up many she if here be also would which more it in just other some which made. When get some s...
+
+------------------------------------------------------------
+
+FILE #6: test_document_1668words_expected8.3p_actual9p_f14.pdf
+------------------------------------------------------------
+Expected Word Count: 1668
+OCR Word Count: 1694
+Accuracy: 98.47%
+Expected Pages (from filename): 8.3
+Actual Pages (from filename): 9.0
+Pages Processed: 9
+Font Size (from filename): 14
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 1668 Words (Font: 14pt) Time life what can into word is of after a then say would they get only? What write your day know what his kno...
+
+------------------------------------------------------------
+
+FILE #7: test_document_2000words_expected10.0p_actual5p_f12.pdf
+------------------------------------------------------------
+Expected Word Count: 2000
+OCR Word Count: 2018
+Accuracy: 99.11%
+Expected Pages (from filename): 10.0
+Actual Pages (from filename): 5.0
+Pages Processed: 5
+Font Size (from filename): 12
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 2000 Words (Font: 12pt) Said make when their from word can time their! Two like had life he new one all think on on will too word they...
+
+------------------------------------------------------------
+
+FILE #8: test_document_200words_expected1.0p_actual1p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 200
+OCR Word Count: 210
+Accuracy: 95.24%
+Expected Pages (from filename): 1.0
+Actual Pages (from filename): 1.0
+Pages Processed: 1
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 200 Words (Font: 16pt) Out were which which out what too still these before had still think still these? There good any it more any sh...
+
+------------------------------------------------------------
+
+FILE #9: test_document_2500words_expected12.5p_actual11p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 2500
+OCR Word Count: 2530
+Accuracy: 98.81%
+Expected Pages (from filename): 12.5
+Actual Pages (from filename): 11.0
+Pages Processed: 11
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 2500 Words (Font: 13pt) All like will some do has have as can will not made if any our first into out. Them were be get for at but now...
+
+------------------------------------------------------------
+
+FILE #10: test_document_3000words_expected15.0p_actual15p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 3000
+OCR Word Count: 3038
+Accuracy: 98.75%
+Expected Pages (from filename): 15.0
+Actual Pages (from filename): 15.0
+Pages Processed: 15
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.01s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 3000 Words (Font: 13pt) There by or its our when one his a some good. Or new said say then good then as very before be that a what her...
+
+------------------------------------------------------------
+
+FILE #11: test_document_350words_expected1.8p_actual1p_f12.pdf
+------------------------------------------------------------
+Expected Word Count: 350
+OCR Word Count: 360
+Accuracy: 97.22%
+Expected Pages (from filename): 1.8
+Actual Pages (from filename): 1.0
+Pages Processed: 1
+Font Size (from filename): 12
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 350 Words (Font: 12pt) Many to we like two what each get may how man said has its after go were from its any! Each you is his write ca...
+
+------------------------------------------------------------
+
+FILE #12: test_document_4000words_expected20.0p_actual19p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 4000
+OCR Word Count: 4046
+Accuracy: 98.86%
+Expected Pages (from filename): 20.0
+Actual Pages (from filename): 19.0
+Pages Processed: 19
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.02s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 4000 Words (Font: 13pt) His which was up made do if think. Which him good the also before may get our say his. Say but about from to h...
+
+------------------------------------------------------------
+
+FILE #13: test_document_475words_expected2.4p_actual3p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 475
+OCR Word Count: 489
+Accuracy: 97.14%
+Expected Pages (from filename): 2.4
+Actual Pages (from filename): 3.0
+Pages Processed: 3
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 475 Words (Font: 16pt) Out at i other then may too out is. This for had me would when also still our when or as some write day their? ...
+
+------------------------------------------------------------
+
+FILE #14: test_document_5000words_expected25.0p_actual23p_f13.pdf
+------------------------------------------------------------
+Expected Word Count: 5000
+OCR Word Count: 5054
+Accuracy: 98.93%
+Expected Pages (from filename): 25.0
+Actual Pages (from filename): 23.0
+Pages Processed: 23
+Font Size (from filename): 13
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 5000 Words (Font: 13pt) Over her get over very being made at was get over they these day used as of. Still man for when made may first...
+
+------------------------------------------------------------
+
+FILE #15: test_document_500words_expected2.5p_actual3p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 500
+OCR Word Count: 514
+Accuracy: 97.28%
+Expected Pages (from filename): 2.5
+Actual Pages (from filename): 3.0
+Pages Processed: 3
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.02s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 500 Words (Font: 16pt) For still there like which one how your life the so after him used if like? She when still they are first he yo...
+
+------------------------------------------------------------
+
+FILE #16: test_document_50words_expected0.2p_actual1p_f16.pdf
+------------------------------------------------------------
+Expected Word Count: 50
+OCR Word Count: 60
+Accuracy: 83.33%
+Expected Pages (from filename): 0.2
+Actual Pages (from filename): 1.0
+Pages Processed: 1
+Font Size (from filename): 16
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 50 Words (Font: 16pt) Him they would be had after or their there are me when how say only your get it. How many our do do too too her?...
+
+------------------------------------------------------------
+
+FILE #17: test_document_649words_expected3.2p_actual3p_f11.pdf
+------------------------------------------------------------
+Expected Word Count: 649
+OCR Word Count: 663
+Accuracy: 97.89%
+Expected Pages (from filename): 3.2
+Actual Pages (from filename): 3.0
+Pages Processed: 3
+Font Size (from filename): 11
+Processing Method: direct_text_extraction
+Processing Time: 0.01s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 649 Words (Font: 11pt) If what used her may too we her your we also the before for write? Day and each used of you any which is has we...
+
+------------------------------------------------------------
+
+FILE #18: test_document_800words_expected4.0p_actual3p_f12.pdf
+------------------------------------------------------------
+Expected Word Count: 800
+OCR Word Count: 814
+Accuracy: 98.28%
+Expected Pages (from filename): 4.0
+Actual Pages (from filename): 3.0
+Pages Processed: 3
+Font Size (from filename): 12
+Processing Method: direct_text_extraction
+Processing Time: 0.0s
+Languages Detected: English, Numbers
+Confidence Score: None
+Success: ✅
+Text Preview: Test Document - 800 Words (Font: 12pt) Her other from life what our here some which your all in time they their! Life for through it they only will ca...
+
+------------------------------------------------------------
+
