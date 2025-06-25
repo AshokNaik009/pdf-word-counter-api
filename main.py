@@ -106,7 +106,7 @@ logger.info(f"🌍 Environment: {'Azure' if IS_AZURE else 'Docker' if IS_DOCKER 
 app = FastAPI(
     title="Ultra-Fast PDF Word Counter API",
     description="Extract text from PDFs with multithreaded OCR support",
-    version="5.0.0"
+    version="5.1.0"
 )
 
 # Add CORS middleware
@@ -145,17 +145,17 @@ class UltraFastPDFProcessor:
         self.pdf2image_available = PDF2IMAGE_AVAILABLE
         self.pymupdf_available = PYMUPDF_AVAILABLE
         
-       # IMPROVED CODE - Better DPI for large documents
+        # Enhanced settings for large document support
         if IS_CLOUD:
             self.dpi = 300
             self.scanned_dpi = 350  # Higher DPI for scanned docs
-            self.max_pages = 10  # Allow more pages
+            self.max_pages = 10     # Allow more pages
             self.max_dimension = 1500
             self.max_workers = 2
         else:
-            self.dpi = 400  # Higher DPI for text docs
+            self.dpi = 400          # Higher DPI for text docs
             self.scanned_dpi = 400  # Higher DPI for scanned docs
-            self.max_pages = 25  # Allow more pages
+            self.max_pages = 25     # Allow more pages
             self.max_dimension = 2000
             self.max_workers = 4
         
@@ -164,6 +164,15 @@ class UltraFastPDFProcessor:
         
         logger.info(f"🚀 Ultra-fast processor - Text: {self.dpi}DPI, Scanned: {self.scanned_dpi}DPI")
         logger.info(f"⚡ Max workers: {self.max_workers}, Max pages: {self.max_pages}")
+    
+    def get_optimal_dpi_for_large_docs(self, page_count: int) -> int:
+        """Get optimal DPI based on document size"""
+        if page_count > 20:
+            return max(250, self.scanned_dpi - 100)  # Much lower DPI for large docs
+        elif page_count > 10:
+            return max(300, self.scanned_dpi - 50)   # Slightly lower DPI
+        else:
+            return self.scanned_dpi  # Use full DPI for small docs
     
     def extract_text_pymupdf(self, pdf_bytes: bytes) -> tuple:
         """Extract text using PyMuPDF (fastest method)"""
@@ -175,7 +184,10 @@ class UltraFastPDFProcessor:
             text = ""
             pages_count = doc.page_count
             
-            for page_num in range(min(pages_count, self.max_pages)):
+            # Process more pages for large documents
+            max_pages_to_process = min(pages_count, self.max_pages * 2) if pages_count > 15 else self.max_pages
+            
+            for page_num in range(min(pages_count, max_pages_to_process)):
                 page = doc[page_num]
                 page_text = page.get_text()
                 text += page_text + "\n"
@@ -186,7 +198,71 @@ class UltraFastPDFProcessor:
             logger.error(f"PyMuPDF extraction failed: {e}")
             raise e
     
-    
+    def pdf_to_images_fast(self, pdf_bytes: bytes) -> List[Image.Image]:
+        """Ultra-fast PDF to image conversion with dynamic DPI for large documents"""
+        if not self.pdf2image_available:
+            raise Exception("pdf2image not available")
+        
+        try:
+            # Get page count first
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            page_count = doc.page_count
+            doc.close()
+            
+            # Use lower DPI for large documents
+            if page_count > 15:
+                dpi_to_use = 250  # Much lower DPI for large documents
+                max_pages_to_process = min(page_count, 30)  # Process more pages
+                logger.info(f"Large document detected ({page_count} pages) - using {dpi_to_use} DPI")
+            elif page_count > 10:
+                dpi_to_use = 300  # Medium DPI
+                max_pages_to_process = min(page_count, 20)
+                logger.info(f"Medium document detected ({page_count} pages) - using {dpi_to_use} DPI")
+            else:
+                dpi_to_use = self.scanned_dpi  # Full DPI for small docs
+                max_pages_to_process = self.max_pages
+                logger.info(f"Small document detected ({page_count} pages) - using {dpi_to_use} DPI")
+            
+            logger.info(f"Converting PDF: {page_count} pages, processing {max_pages_to_process} pages...")
+            start_time = time.time()
+            
+            images = convert_from_bytes(
+                pdf_bytes, 
+                dpi=dpi_to_use,
+                fmt='JPEG',
+                thread_count=self.max_workers,
+                first_page=1,
+                last_page=max_pages_to_process,
+                grayscale=True,
+                transparent=False
+            )
+            
+            # Less aggressive resizing for large documents
+            optimized_images = []
+            for img in images:
+                width, height = img.size
+                
+                # Be less aggressive with large documents
+                if page_count > 15:
+                    max_dimension = self.max_dimension * 1.3  # Allow larger images
+                else:
+                    max_dimension = self.max_dimension
+                
+                if width > max_dimension:
+                    ratio = max_dimension / width
+                    new_height = int(height * ratio)
+                    img = img.resize((int(max_dimension), new_height), Image.Resampling.LANCZOS)
+                
+                optimized_images.append(img)
+            
+            conversion_time = time.time() - start_time
+            logger.info(f"⚡ Converted {len(optimized_images)} images in {conversion_time:.2f}s")
+            
+            return optimized_images
+            
+        except Exception as e:
+            logger.error(f"Fast PDF conversion failed: {e}")
+            raise e
     
     def process_single_image_ocr(self, args) -> tuple:
         """Process a single image with OCR - designed for multithreading"""
@@ -303,100 +379,47 @@ class UltraFastPDFProcessor:
             logger.error(f"Ultra-fast OCR failed: {e}")
             raise e
     
-    def pdf_to_images_fast(self, pdf_bytes: bytes) -> List[Image.Image]:
-        """Ultra-fast PDF to image conversion with dynamic DPI"""
-        if not self.pdf2image_available:
-            raise Exception("pdf2image not available")
-        
-        try:
-            # First, get page count to determine optimal DPI
-            import fitz
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            page_count = doc.page_count
-            doc.close()
-            
-            # Get optimal DPI for this document
-            optimal_dpi = self.get_optimal_dpi(page_count, is_scanned=True)
-            
-            logger.info(f"Converting PDF: {page_count} pages, using {optimal_dpi} DPI...")
-            start_time = time.time()
-            
-            # Process all pages for large documents (don't limit)
-            max_pages_to_process = min(page_count, self.max_pages * 2) if page_count > 15 else self.max_pages
-            
-            images = convert_from_bytes(
-                pdf_bytes, 
-                dpi=optimal_dpi,  # Use dynamic DPI
-                fmt='JPEG',
-                thread_count=self.max_workers,
-                first_page=1,
-                last_page=max_pages_to_process,  # Process more pages for large docs
-                grayscale=True,
-                transparent=False,
-                poppler_path=None
-            )
-            
-            # Less aggressive image optimization for large documents
-            optimized_images = []
-            for img in images:
-                width, height = img.size
-                
-                # For large documents, be less aggressive with resizing
-                max_dim = self.max_dimension * 1.2 if page_count > 15 else self.max_dimension
-                
-                if width > max_dim:
-                    ratio = max_dim / width
-                    new_height = int(height * ratio)
-                    img = img.resize((int(max_dim), new_height), Image.Resampling.LANCZOS)  # Better quality
-                
-                optimized_images.append(img)
-            
-            conversion_time = time.time() - start_time
-            logger.info(f"⚡ Converted {len(optimized_images)} images in {conversion_time:.2f}s")
-            
-            return optimized_images
-            
-        except Exception as e:
-            logger.error(f"Fast PDF conversion failed: {e}")
-            raise e
-
     def count_words_advanced(self, text: str) -> int:
         """Advanced word counting - less aggressive for large documents"""
         if not text or text.strip() == "":
             return 0
         
-        # For large documents, be less aggressive with cleaning
-        word_count_estimate = len(text.split())
-        is_large_document = word_count_estimate > 3000
+        # Estimate document size
+        raw_word_count = len(text.split())
+        is_large_document = raw_word_count > 3000
         
         if is_large_document:
-            # Less aggressive cleaning for large documents
-            # Only remove obvious headers
+            logger.info(f"Large document detected ({raw_word_count} raw words) - using gentle cleaning")
+            
+            # GENTLE cleaning for large documents
+            # Only remove the most obvious headers
             text = re.sub(r'Test Document - \d+ Words \(Font: \d+pt\)', '', text, flags=re.IGNORECASE)
             
-            # Keep page numbers but clean them differently
+            # Convert page numbers to spaces (don't remove completely)
             text = re.sub(r'Page \d+ of \d+', ' ', text, flags=re.IGNORECASE)
             
-            # Minimal punctuation cleaning
-            text = re.sub(r'[^\w\s\-\'.,!?;:\n]', ' ', text)
+            # Very minimal punctuation cleaning
+            text = re.sub(r'[^\w\s\-\'.,!?;:\n/]', ' ', text)
             text = re.sub(r'\s+', ' ', text.strip())
             
-            # Less aggressive word filtering
+            # Minimal word filtering - keep almost everything
             words = text.split()
             valid_words = []
             
             for word in words:
-                clean_word = re.sub(r'^[^\w]+|[^\w]+$', '', word)
+                clean_word = word.strip('.,!?;:')
                 
-                # More lenient filtering for large documents
+                # Very lenient - keep any word with letters or numbers
                 if clean_word and len(clean_word) >= 1:
-                    if re.search(r'[a-zA-Z]', clean_word) or clean_word.isdigit():
+                    if re.search(r'[a-zA-Z0-9]', clean_word):
                         valid_words.append(clean_word)
             
-            return len(valid_words)
-        
+            result = len(valid_words)
+            logger.info(f"Large document: {raw_word_count} raw -> {result} cleaned words")
+            return result
+            
         else:
-            # Original aggressive cleaning for small documents
+            # NORMAL cleaning for smaller documents
             text = re.sub(r'Test Document.*?pt\)', '', text, flags=re.IGNORECASE)
             text = re.sub(r'Page \d+ of \d+', '', text, flags=re.IGNORECASE)
             text = re.sub(r'\d+/\d+', '', text)
@@ -417,9 +440,8 @@ class UltraFastPDFProcessor:
                         continue
                     else:
                         valid_words.append(clean_word)
-        
-        return len(valid_words)
-
+            
+            return len(valid_words)
     
     def count_words(self, text: str) -> int:
         """Use the advanced counting method"""
@@ -453,23 +475,24 @@ pdf_processor = UltraFastPDFProcessor()
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "ULTRA-FAST PDF Word Counter API with Multithreading",
-        "version": "5.0.0",
+        "message": "ULTRA-FAST PDF Word Counter API with Large Document Support",
+        "version": "5.1.0",
         "environment": "Azure App Service" if IS_AZURE else "Docker" if IS_DOCKER else "Local",
         "platform": platform.system(),
         "capabilities": {
             "multithreaded_ocr": True,
             "ultra_fast_processing": True,
+            "large_document_support": True,
+            "dynamic_dpi_scaling": True,
             "target_speed": "5-15 seconds for scanned documents",
             "max_workers": pdf_processor.max_workers
         },
         "speed_optimizations": [
             f"Multithreaded OCR ({pdf_processor.max_workers} workers)",
-            f"Reduced DPI ({pdf_processor.scanned_dpi})",
-            "JPEG conversion (faster than PNG)",
-            "Grayscale processing",
-            "Single preprocessing method",
-            "Minimal text cleaning"
+            "Dynamic DPI (250-400 based on document size)",
+            "Large document detection and optimization",
+            "Gentle word cleaning for large documents",
+            "Extended page processing for large documents"
         ]
     }
 
@@ -485,11 +508,12 @@ async def health_check():
             pass
     
     return {
-        "status": "ultra_fast",
+        "status": "ultra_fast_with_large_doc_support",
         "tesseract_available": pdf_processor.tesseract_available,
         "tesseract_version": tesseract_version,
         "max_workers": pdf_processor.max_workers,
-        "target_speed": "5-15 seconds for scanned documents"
+        "target_speed": "5-15 seconds for scanned documents",
+        "large_document_support": True
     }
 
 @app.get("/system-info", response_model=SystemInfo)
@@ -517,7 +541,7 @@ async def get_system_info():
 
 @app.post("/count-words", response_model=WordCountResponse)
 async def count_pdf_words(file: UploadFile = File(...)):
-    """ULTRA-FAST endpoint with multithreading"""
+    """ULTRA-FAST endpoint with multithreading and large document support"""
     start_time = time.time()
     
     if not file.filename.lower().endswith('.pdf'):
@@ -543,7 +567,7 @@ async def count_pdf_words(file: UploadFile = File(...)):
             error="Empty file provided"
         )
     
-    logger.info(f"🚀 ULTRA-FAST processing: {file.filename} ({file_size:,} bytes)")
+    logger.info(f"🚀 ULTRA-FAST processing with large doc support: {file.filename} ({file_size:,} bytes)")
     
     try:
         # Method 1: Direct text extraction (still fastest)
@@ -563,7 +587,7 @@ async def count_pdf_words(file: UploadFile = File(...)):
                     return WordCountResponse(
                         total_words=word_count,
                         text_extracted=True,
-                        processing_method="ultra_fast_direct_extraction",
+                        processing_method="ultra_fast_direct_extraction_large_doc_support",
                         languages_detected=languages,
                         pages_processed=pages_count,
                         extracted_text_preview=preview,
@@ -572,7 +596,7 @@ async def count_pdf_words(file: UploadFile = File(...)):
             except Exception as e:
                 logger.warning(f"❌ Direct extraction failed: {e}")
         
-        # Method 2: ULTRA-FAST Multithreaded OCR
+        # Method 2: ULTRA-FAST Multithreaded OCR with large document support
         if not pdf_processor.tesseract_available:
             return WordCountResponse(
                 total_words=0,
@@ -593,7 +617,7 @@ async def count_pdf_words(file: UploadFile = File(...)):
                 error="PDF conversion not available"
             )
         
-        logger.info("🚀 Starting ULTRA-FAST multithreaded OCR...")
+        logger.info("🚀 Starting ULTRA-FAST multithreaded OCR with large document support...")
         
         try:
             images = pdf_processor.pdf_to_images_fast(content)
@@ -615,12 +639,12 @@ async def count_pdf_words(file: UploadFile = File(...)):
             preview = pdf_processor.get_text_preview(extracted_text)
             processing_time = time.time() - start_time
             
-            logger.info(f"🚀 ULTRA-FAST OCR completed: {word_count} words in {processing_time:.2f}s")
+            logger.info(f"🚀 ULTRA-FAST OCR with large doc support completed: {word_count} words in {processing_time:.2f}s")
             
             return WordCountResponse(
                 total_words=word_count,
                 text_extracted=True,
-                processing_method="ultra_fast_multithreaded_ocr",
+                processing_method="ultra_fast_multithreaded_ocr_large_doc_support",
                 languages_detected=languages,
                 pages_processed=len(images),
                 confidence_score=round(confidence, 2) if confidence > 0 else None,
@@ -660,9 +684,10 @@ async def internal_error_handler(request, exc):
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 Starting ULTRA-FAST PDF Word Counter API...")
+    logger.info("🚀 Starting ULTRA-FAST PDF Word Counter API with Large Document Support...")
     logger.info(f"⚡ Multithreaded OCR with {pdf_processor.max_workers} workers")
-    logger.info(f"🎯 Target: Text<1s, Scanned<15s")
+    logger.info(f"📄 Large document support with dynamic DPI scaling")
+    logger.info(f"🎯 Target: Text<1s, Scanned<15s, Large docs optimized")
 
 if __name__ == "__main__":
     import uvicorn
@@ -670,8 +695,9 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", os.getenv("WEBSITES_PORT", 8000)))
     host = "0.0.0.0" if IS_CLOUD else "127.0.0.1"
     
-    print("🚀 Starting ULTRA-FAST PDF Word Counter API...")
+    print("🚀 Starting ULTRA-FAST PDF Word Counter API with Large Document Support...")
     print(f"⚡ Multithreaded processing: {pdf_processor.max_workers} workers")
+    print(f"📄 Large document support: Dynamic DPI (250-400)")
     print(f"🎯 Speed target: 5-15 seconds for scanned documents")
     print(f"🌐 Server: http://{host}:{port}")
     
