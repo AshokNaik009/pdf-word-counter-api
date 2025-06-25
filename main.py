@@ -264,29 +264,138 @@ class UltraFastPDFProcessor:
             logger.error(f"Fast PDF conversion failed: {e}")
             raise e
     
+    def enhance_image_for_scanned_docs(self, img):
+        """Enhanced preprocessing for scanned documents like cheques, certificates, ID cards"""
+        try:
+            # Convert PIL to OpenCV
+            cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            
+            # Apply multiple preprocessing techniques for better OCR
+            
+            # 1. Noise reduction for scanned documents
+            denoised = cv2.medianBlur(gray, 3)
+            
+            # 2. Enhance contrast and brightness
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(denoised)
+            
+            # 3. Apply Gaussian blur to smooth text edges
+            blurred = cv2.GaussianBlur(enhanced, (1, 1), 0)
+            
+            # 4. Adaptive thresholding for varying lighting conditions
+            adaptive_thresh = cv2.adaptiveThreshold(
+                blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            
+            # 5. Morphological operations to clean up text
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            cleaned = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_CLOSE, kernel)
+            
+            # 6. Additional denoising for final cleanup
+            final = cv2.medianBlur(cleaned, 3)
+            
+            return Image.fromarray(final)
+            
+        except Exception as e:
+            logger.warning(f"Enhanced preprocessing failed, using basic: {e}")
+            # Fallback to basic preprocessing
+            cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            return Image.fromarray(thresh)
+
+    def detect_document_type(self, text: str) -> str:
+        """Detect document type based on text patterns"""
+        text_lower = text.lower()
+        
+        # Cheque patterns
+        cheque_keywords = ['pay', 'bank', 'check', 'cheque', 'dollars', 'amount', 'date', 'signature']
+        if any(keyword in text_lower for keyword in cheque_keywords) and ('pay' in text_lower or 'bank' in text_lower):
+            return 'cheque'
+        
+        # Certificate patterns
+        cert_keywords = ['certificate', 'certify', 'hereby', 'awarded', 'completion', 'degree', 'diploma']
+        if any(keyword in text_lower for keyword in cert_keywords):
+            return 'certificate'
+        
+        # ID card patterns
+        id_keywords = ['id', 'identification', 'license', 'card', 'name:', 'dob', 'address']
+        if any(keyword in text_lower for keyword in id_keywords):
+            return 'id_card'
+        
+        return 'general'
+
+    def get_ocr_config_for_document_type(self, doc_type: str) -> str:
+        """Get specialized OCR configuration based on document type"""
+        configs = {
+            'cheque': '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$.,/- ',
+            'certificate': '--oem 3 --psm 6',
+            'id_card': '--oem 3 --psm 6',
+            'general': '--oem 3 --psm 6 -l eng'
+        }
+        return configs.get(doc_type, configs['general'])
+
     def process_single_image_ocr(self, args) -> tuple:
-        """Process a single image with OCR - designed for multithreading"""
+        """Process a single image with OCR - designed for multithreading with enhanced scanned doc support"""
         img, page_num = args
         
         try:
             logger.info(f"⚡ Processing page {page_num} in thread...")
             
-            # Single fast preprocessing
-            cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            # Try enhanced preprocessing for scanned documents first
+            enhanced_img = self.enhance_image_for_scanned_docs(img)
             
-            # Simple threshold - fastest preprocessing
-            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            processed_img = Image.fromarray(thresh)
-            
-            # Single OCR attempt - fastest config
-            text = pytesseract.image_to_string(
-                processed_img, 
-                config='--oem 3 --psm 6 -l eng'  # Fastest config
+            # Initial OCR attempt with general config
+            initial_text = pytesseract.image_to_string(
+                enhanced_img, 
+                config='--oem 3 --psm 6 -l eng'
             )
             
+            # If initial OCR yields poor results, try different approaches
+            if len(initial_text.strip()) < 10:
+                logger.info(f"⚡ Page {page_num}: Poor initial OCR, trying alternative preprocessing...")
+                
+                # Try with original simple preprocessing as fallback
+                cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+                _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                simple_img = Image.fromarray(thresh)
+                
+                simple_text = pytesseract.image_to_string(
+                    simple_img, 
+                    config='--oem 3 --psm 6 -l eng'
+                )
+                
+                # Use the better result
+                if len(simple_text.strip()) > len(initial_text.strip()):
+                    text = simple_text
+                    logger.info(f"⚡ Page {page_num}: Simple preprocessing worked better")
+                else:
+                    text = initial_text
+                    logger.info(f"⚡ Page {page_num}: Enhanced preprocessing worked better")
+            else:
+                # Detect document type and apply specialized config
+                doc_type = self.detect_document_type(initial_text)
+                if doc_type != 'general':
+                    logger.info(f"⚡ Page {page_num}: Detected {doc_type}, applying specialized OCR")
+                    specialized_config = self.get_ocr_config_for_document_type(doc_type)
+                    
+                    specialized_text = pytesseract.image_to_string(
+                        enhanced_img,
+                        config=specialized_config
+                    )
+                    
+                    # Use specialized result if it's better
+                    if len(specialized_text.strip()) > len(initial_text.strip()) * 0.8:
+                        text = specialized_text
+                    else:
+                        text = initial_text
+                else:
+                    text = initial_text
+            
             word_count = len(text.split())
-            logger.info(f"⚡ Page {page_num}: {word_count} words")
+            logger.info(f"⚡ Page {page_num}: {word_count} words extracted")
             
             return text, page_num, word_count
             
