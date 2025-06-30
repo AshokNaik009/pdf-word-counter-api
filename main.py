@@ -618,7 +618,7 @@ async def count_pdf_words(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
     
     file_size = len(content)
-    max_size = 10 * 1024 * 1024  # SAME: Keep 10MB limit
+    max_size = 100 * 1024 * 1024  # SAME: Keep 10MB limit
     if file_size > max_size:
         raise HTTPException(status_code=413, detail=f"File too large. Maximum size: {max_size // (1024*1024)}MB")
     
